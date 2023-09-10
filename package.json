@@ -1,0 +1,24 @@
+{
+  "name": "tgbot",
+  "version": "1.0.0",
+  "description": "simple telegram bot for friends",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bykita/tgbot.git"
+  },
+  "author": "bykita",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bykita/tgbot/issues"
+  },
+  "homepage": "https://github.com/bykita/tgbot#readme",
+  "dependencies": {
+    "@grammyjs/conversations": "^1.1.2",
+    "dotenv": "^16.3.1",
+    "grammy": "^1.18.1"
+  }
+}
