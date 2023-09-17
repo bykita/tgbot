@@ -2,6 +2,7 @@
   "name": "tgbot",
   "version": "1.0.0",
   "description": "simple telegram bot for friends",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -18,7 +19,12 @@
   "homepage": "https://github.com/bykita/tgbot#readme",
   "dependencies": {
     "@grammyjs/conversations": "^1.1.2",
+    "@grammyjs/emoji": "^1.1.0",
+    "@grammyjs/menu": "^1.2.1",
     "dotenv": "^16.3.1",
-    "grammy": "^1.18.1"
+    "flibusta": "^0.4.4",
+    "grammy": "^1.18.1",
+    "socks-proxy-agent": "^8.0.2",
+    "tor-request": "^3.1.0"
   }
 }
