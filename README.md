@@ -1,4 +1,5 @@
 # tgbot
-simple telegram bot for personal reasons
+A simple telegram bot for downloading books from flibusta.
+Tor-connection is necessary for bot to work!
 
-insert your tg bot key in process.env
+Insert your tg bot key in process.env

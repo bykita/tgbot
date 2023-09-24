@@ -1,11 +1,17 @@
-import { Bot, session, InlineKeyboard } from 'grammy';
+import { Bot, session, InlineKeyboard, InputFile } from 'grammy';
 import { conversations, createConversation } from '@grammyjs/conversations';
 import FlibustaAPI from 'flibusta';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import tr from 'tor-request';
 import dotenv from 'dotenv';
+import fetch from 'node-fetch';
+import fs from 'fs';
+import unzipper from 'unzipper';
+import * as uuid from 'uuid';
 
 dotenv.config({ path: "./process.env" });
+
+const URL = 'http://flibustaongezhld6dibs2dps6vm4nvqg2kp7vgowbu76tzopgnhazqd.onion'
 
 const bot = new Bot(process.env.BOT_TOKEN);
 
@@ -25,7 +31,27 @@ async function greeting(conversation, ctx) {
     await ctx.reply(`Welcome to the chat, ${message.text}!`);
 }
 
-async function showBookList(ctx, flibustaApi, books, page = 0) {
+async function searchBook(conversation, ctx) {
+    tr.setTorAddress('127.0.0.1', '9050');
+    const flibustaApi = new FlibustaAPI.default(URL, {
+        httpAgent: new SocksProxyAgent('socks5h://127.0.0.1:9050'),
+    });
+
+    await ctx.reply("Напишите название книги");
+
+    const newCtx = await conversation.wait();
+
+    const bookName = newCtx.message.text;
+    let books = await flibustaApi.getBooksByNameFromOpds(bookName);
+
+    newCtx.session.flibustaApi = flibustaApi;
+    newCtx.session.books = books;
+    newCtx.session.page = 0;
+
+    await conversation.external(() => showBookList(newCtx, books));
+}
+
+async function showBookList(ctx, books, page = 0) {
     let booksStr = '';
     const inlineKeyboard = new InlineKeyboard()
     for (let i = 0; i < 5; i++) {
@@ -49,7 +75,7 @@ async function showBookList(ctx, flibustaApi, books, page = 0) {
         inlineKeyboard.text('>', 'forward');
     }
 
-    await ctx.reply('Вот, что я нашёл:\n\n' + booksStr, { 
+    await ctx.reply('Вот, что я нашёл:\n\n' + booksStr, {
         parse_mode: "HTML",
         reply_markup: inlineKeyboard
     });
@@ -57,6 +83,8 @@ async function showBookList(ctx, flibustaApi, books, page = 0) {
 
 async function suggestBookDownload(ctx, book) {
     const inlineKeyboard = new InlineKeyboard();
+
+    ctx.session.book = book;
 
     for (let download of book.downloads) {
         const type = download.link.split('/').pop();
@@ -68,45 +96,69 @@ async function suggestBookDownload(ctx, book) {
     });
 }
 
-async function searchBook(conversation, ctx) {
-    tr.setTorAddress('127.0.0.1', '9050');
-    const flibustaApi = new FlibustaAPI.default('http://flibustaongezhld6dibs2dps6vm4nvqg2kp7vgowbu76tzopgnhazqd.onion', {
-        httpAgent: new SocksProxyAgent('socks5h://127.0.0.1:9050'),
+async function downloadBook(ctx, book, ext) {
+
+    await ctx.reply(`Начинаю скачивание книги ${book.title}`);
+
+    const {link, type} = book.downloads.find(obj => obj.link.endsWith(ext));
+
+    const agent = new SocksProxyAgent('socks5h://127.0.0.1:9050');
+    const fileUUID = uuid.v4();
+
+    console.log('Downloading book')
+
+    const fileStream = fs.createWriteStream(`files/${fileUUID}.zip`);
+    const res = await fetch(URL + link, {
+        agent,
+        headers: {
+            'Content-Type': type
+        }
+    })
+    await new Promise((resolve, reject) => {
+        res.body.pipe(fileStream);
+        res.body.on("error", reject);
+        fileStream.on("finish", resolve);
     });
 
-    await ctx.reply("Напишите название книги");
+    console.log('Downloaded book')
 
-    const newCtx = await conversation.wait();
+    const zip = fs.createReadStream(`files/${fileUUID}.zip`).pipe(unzipper.Parse({forceStream: true}));
+    for await (const entry of zip) {
+        const fileName = entry.path;
+        if (fileName.endsWith(ext)) {
+            entry.pipe(fs.createWriteStream(`files/${fileUUID}.${ext}`));
+        } else {
+            entry.autodrain();
+        }
+    }
 
-    const bookName = newCtx.message.text;
-    let books = await flibustaApi.getBooksByNameFromOpds(bookName);
-
-    newCtx.session.flibustaApi = flibustaApi;
-    newCtx.session.books = books;
-    newCtx.session.page = 0;
-
-    await conversation.external(() => showBookList(newCtx, flibustaApi, books));
+    await ctx.reply('Вот ваша книга! ✨');
+    await ctx.replyWithDocument(new InputFile(`files/${fileUUID}.${ext}`, `${book.title}.${ext}`));
 }
 
 bot.callbackQuery("back", async (ctx) => {
-    const {flibustaApi, books} = ctx.session;
-    await showBookList(ctx, flibustaApi, books, --ctx.session.page);
+    const {books} = ctx.session;
+    await showBookList(ctx, books, --ctx.session.page);
     await ctx.answerCallbackQuery();
 });
 
 bot.callbackQuery("forward", async (ctx) => {
-    const {flibustaApi, books} = ctx.session;
-    await showBookList(ctx, flibustaApi, books, ++ctx.session.page);
+    const {books} = ctx.session;
+    await showBookList(ctx, books, ++ctx.session.page);
     await ctx.answerCallbackQuery();
 });
 
 bot.on("callback_query:data", async (ctx) => {
-    const {books} = ctx.session;
     const [callbackType, id] = ctx.callbackQuery.data.split('_');
 
     switch (callbackType) {
         case 'book':
+            const {books} = ctx.session;
             await suggestBookDownload(ctx, books[id])
+            break;
+        case 'download':
+            const {book} = ctx.session;
+            await downloadBook(ctx, book, id)
             break;
         default:
             console.log("Unknown button event with payload", ctx.callbackQuery.data);
