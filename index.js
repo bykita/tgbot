@@ -34,8 +34,10 @@ async function searchBook(conversation, ctx) {
     await ctx.reply("Напишите название книги");
 
     const newCtx = await conversation.wait();
+    await newCtx.reply("Запуск поиска...");
 
     const bookName = newCtx.message.text;
+    console.log(`Searching "${bookName}"`);
     let books = await flibustaApi.getBooksByNameFromOpds(bookName);
 
     newCtx.session.flibustaApi = flibustaApi;
@@ -93,6 +95,32 @@ async function showBookList(ctx, books, page = 0) {
  * @param {object} book Информация о выбранной книге
  */
 async function suggestBookDownload(ctx, book) {
+
+    function strip(str){
+        return str
+            .replace(/<br\/>/gm, '\n')
+            .replace(/<[^>]*>?/gm, '');
+    }
+
+    const imageUUID = uuid.v4();
+    const imagePath = `files/${imageUUID}.${book.cover.split('.').pop()}`;
+
+    const fileStream = fs.createWriteStream(imagePath);
+    const res = await fetch(URL + book.cover, {
+        agent,
+        headers: {
+            'Content-Type': "image/xyz"
+        }
+    })
+    await new Promise((resolve, reject) => {
+        res.body.pipe(fileStream);
+        res.body.on("error", reject);
+        fileStream.on("finish", resolve);
+    });
+
+    await ctx.replyWithPhoto(new InputFile(imagePath));
+    await ctx.reply(strip(book.description));
+
     const inlineKeyboard = new InlineKeyboard();
 
     ctx.session.book = book;
@@ -118,12 +146,12 @@ async function downloadBook(ctx, book, ext) {
 
     const {link, type} = book.downloads.find(obj => obj.link.endsWith(ext));
 
-    const agent = new SocksProxyAgent('socks5h://127.0.0.1:9050');
     const fileUUID = uuid.v4();
+    const filePath = `files/${fileUUID}.zip`;
 
-    console.log('Downloading book')
+    console.log('Downloading book');
 
-    const fileStream = fs.createWriteStream(`files/${fileUUID}.zip`);
+    const fileStream = fs.createWriteStream(filePath);
     const res = await fetch(URL + link, {
         agent,
         headers: {
@@ -136,9 +164,9 @@ async function downloadBook(ctx, book, ext) {
         fileStream.on("finish", resolve);
     });
 
-    console.log('Downloaded book')
+    console.log('Downloaded book');
 
-    const zip = fs.createReadStream(`files/${fileUUID}.zip`).pipe(unzipper.Parse({forceStream: true}));
+    const zip = fs.createReadStream(filePath).pipe(unzipper.Parse({forceStream: true}));
     for await (const entry of zip) {
         const fileName = entry.path;
         if (fileName.endsWith(ext)) {
@@ -192,11 +220,12 @@ bot.command("book", async (ctx) => {
     await ctx.conversation.enter("searchBook");
 });
 
-bot.catch((err) => {
+bot.catch(async (err) => {
     const ctx = err.ctx;
     console.error(`Error while handling update ${ctx.update.update_id}:`);
     const e = err.error;
     console.error("Error:", e);
+    await ctx.reply('При поиске произошла ошибка.');
 });
 
 await bot.api.setMyCommands([
@@ -204,8 +233,9 @@ await bot.api.setMyCommands([
 ]);
 
 tr.setTorAddress('127.0.0.1', '9050');
+const agent = new SocksProxyAgent('socks5h://127.0.0.1:9050');
 const flibustaApi = new FlibustaAPI.default(URL, {
-    httpAgent: new SocksProxyAgent('socks5h://127.0.0.1:9050'),
+    httpAgent: agent,
 });
 
 bot.start()
