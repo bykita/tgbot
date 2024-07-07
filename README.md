@@ -15,5 +15,5 @@ Create a process.env file in the root folder and add a key named BOT_TOKEN with 
 
 ## TO-DO
 1. Add English translation
-2. Add book description when selecting
+2. ~~Add book description when selecting~~
 3. Remove Tor dependency (hard to set up in Russia without VPN, maybe using VPN without Tor is better)
