@@ -22,21 +22,15 @@ bot.use(session({
 }));
 
 bot.use(conversations());
-bot.use(createConversation(greeting));
 bot.use(createConversation(searchBook));
 
-async function greeting(conversation, ctx) {
-    await ctx.reply("Hi there! What is your name?");
-    const { message } = await conversation.wait();
-    await ctx.reply(`Welcome to the chat, ${message.text}!`);
-}
-
+/**
+ * Функция вызова промпта для поиска книги
+ * и поиска, с последующим выводом списка книг
+ * @param {*} conversation Объект для общения с пользователем
+ * @param {*} ctx Контекст общения с ботом
+ */
 async function searchBook(conversation, ctx) {
-    tr.setTorAddress('127.0.0.1', '9050');
-    const flibustaApi = new FlibustaAPI.default(URL, {
-        httpAgent: new SocksProxyAgent('socks5h://127.0.0.1:9050'),
-    });
-
     await ctx.reply("Напишите название книги");
 
     const newCtx = await conversation.wait();
@@ -51,7 +45,19 @@ async function searchBook(conversation, ctx) {
     await conversation.external(() => showBookList(newCtx, books));
 }
 
+/**
+ * Функция отображения списка найденных книг по промпту
+ * @param {*} ctx Контекст общения с ботом
+ * @param {Object[]} books Массив с найденными книгами
+ * @param {number} page Страница
+ */
 async function showBookList(ctx, books, page = 0) {
+    if (!books) {
+        await ctx.reply('Книги не найдены :(');
+        await ctx.conversation.enter("searchBook");
+        return;
+    }
+
     let booksStr = '';
     const inlineKeyboard = new InlineKeyboard()
     for (let i = 0; i < 5; i++) {
@@ -81,6 +87,11 @@ async function showBookList(ctx, books, page = 0) {
     });
 }
 
+/**
+ * Функция вызова промпта для формата скачиваемой книги
+ * @param {*} ctx Контекст общения с ботом
+ * @param {object} book Информация о выбранной книге
+ */
 async function suggestBookDownload(ctx, book) {
     const inlineKeyboard = new InlineKeyboard();
 
@@ -96,8 +107,13 @@ async function suggestBookDownload(ctx, book) {
     });
 }
 
+/**
+ * Функция скачивания книги
+ * @param {*} ctx Контекст общения с ботом
+ * @param {Object} book Книга
+ * @param {string} ext Выбранное разрешение файла
+ */
 async function downloadBook(ctx, book, ext) {
-
     await ctx.reply(`Начинаю скачивание книги ${book.title}`);
 
     const {link, type} = book.downloads.find(obj => obj.link.endsWith(ext));
@@ -169,7 +185,7 @@ bot.on("callback_query:data", async (ctx) => {
 });
 
 bot.command("start", async (ctx) => {
-    await ctx.conversation.enter("greeting");
+    ctx.reply("Welcome! Up and running.")
 });
 
 bot.command("book", async (ctx) => {
@@ -181,6 +197,15 @@ bot.catch((err) => {
     console.error(`Error while handling update ${ctx.update.update_id}:`);
     const e = err.error;
     console.error("Error:", e);
+});
+
+await bot.api.setMyCommands([
+    { command: "book", description: "Скачать книгу" },
+]);
+
+tr.setTorAddress('127.0.0.1', '9050');
+const flibustaApi = new FlibustaAPI.default(URL, {
+    httpAgent: new SocksProxyAgent('socks5h://127.0.0.1:9050'),
 });
 
 bot.start()
