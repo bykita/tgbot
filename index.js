@@ -1,8 +1,6 @@
 import { Bot, session, InlineKeyboard, InputFile } from 'grammy';
 import { conversations, createConversation } from '@grammyjs/conversations';
 import FlibustaAPI from 'flibusta';
-import { SocksProxyAgent } from 'socks-proxy-agent';
-import tr from 'tor-request';
 import dotenv from 'dotenv';
 import fetch from 'node-fetch';
 import fs from 'fs';
@@ -11,8 +9,8 @@ import * as uuid from 'uuid';
 
 dotenv.config({ path: "./process.env" });
 
-const URL = 'http://flibustaongezhld6dibs2dps6vm4nvqg2kp7vgowbu76tzopgnhazqd.onion'
-
+const URL = 'https://flibusta.is/';
+const flibustaApi = new FlibustaAPI.default(URL);
 const bot = new Bot(process.env.BOT_TOKEN);
 
 bot.use(session({
@@ -95,7 +93,6 @@ async function showBookList(ctx, books, page = 0) {
  * @param {object} book Информация о выбранной книге
  */
 async function suggestBookDownload(ctx, book) {
-
     function strip(str){
         return str
             .replace(/<br\/>/gm, '\n')
@@ -107,7 +104,6 @@ async function suggestBookDownload(ctx, book) {
 
     const fileStream = fs.createWriteStream(imagePath);
     const res = await fetch(URL + book.cover, {
-        agent,
         headers: {
             'Content-Type': "image/xyz"
         }
@@ -153,7 +149,6 @@ async function downloadBook(ctx, book, ext) {
 
     const fileStream = fs.createWriteStream(filePath);
     const res = await fetch(URL + link, {
-        agent,
         headers: {
             'Content-Type': type
         }
@@ -222,8 +217,8 @@ bot.command("book", async (ctx) => {
 
 bot.catch(async (err) => {
     const ctx = err.ctx;
-    console.error(`Error while handling update ${ctx.update.update_id}:`);
     const e = err.error;
+    console.error(`Error while handling update ${ctx.update.update_id}:`);
     console.error("Error:", e);
     await ctx.reply('При поиске произошла ошибка.');
 });
@@ -232,11 +227,10 @@ await bot.api.setMyCommands([
     { command: "book", description: "Скачать книгу" },
 ]);
 
-tr.setTorAddress('127.0.0.1', '9050');
-const agent = new SocksProxyAgent('socks5h://127.0.0.1:9050');
-const flibustaApi = new FlibustaAPI.default(URL, {
-    httpAgent: agent,
-});
+// Init bot
+if (!fs.existsSync('./files')){
+    fs.mkdirSync('./files');
+}
 
 bot.start()
 console.log('Bot is launched')

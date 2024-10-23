@@ -1,6 +1,6 @@
 {
   "name": "tgbot",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "simple telegram bot for friends",
   "type": "module",
   "main": "index.js",
@@ -19,15 +19,13 @@
   },
   "homepage": "https://github.com/bykita/tgbot#readme",
   "dependencies": {
-    "@grammyjs/conversations": "^1.1.2",
-    "@grammyjs/emoji": "^1.1.0",
-    "@grammyjs/menu": "^1.2.1",
-    "dotenv": "^16.3.1",
-    "flibusta": "^0.4.4",
-    "grammy": "^1.18.1",
-    "socks-proxy-agent": "^8.0.2",
-    "tor-request": "^3.1.0",
-    "unzipper": "^0.10.14",
-    "uuid": "^9.0.1"
+    "@grammyjs/conversations": "^1.2.0",
+    "@grammyjs/emoji": "^1.2.0",
+    "@grammyjs/menu": "^1.2.2",
+    "dotenv": "^16.4.5",
+    "flibusta": "^0.5.1",
+    "grammy": "^1.30.0",
+    "unzipper": "^0.12.3",
+    "uuid": "^10.0.0"
   }
 }
