@@ -16,10 +16,12 @@ If not, then you need to bypass the restrictions. There are 3 ways of doing so:
 
 ### Setting up GoodbyeDPI
 [GoodbyeDPI](https://github.com/ValdikSS/GoodbyeDPI) is a Deep Packet Inspection circumvention utility. Follow the instructions and Flibusta should be unblocked.
+
 You need to run GoodbyeDPI while running your Telegram bot in order for it to work.
 
 ### Setting up Tor connection
 *Works only for v1.0.0*
+
 Download [Tor Expert Bundle](https://www.torproject.org/download/tor/) and set it up. There's an [article](https://community.torproject.org/relay/setup/bridge/windows/) that explains how to do it.
 
 ### Adding your Telegram bot key
