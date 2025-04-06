@@ -6,6 +6,8 @@ import fetch from 'node-fetch';
 import fs from 'fs';
 import unzipper from 'unzipper';
 import * as uuid from 'uuid';
+import { getPopularAuthor, strip } from './src/helper.js';
+import { initFilesFolder } from './src/folderWork.js';
 
 dotenv.config({ path: "./process.env" });
 
@@ -21,6 +23,43 @@ bot.use(session({
 
 bot.use(conversations());
 bot.use(createConversation(searchBook));
+bot.use(createConversation(searchBookByAuthor));
+
+/**
+ * Функция вызова промпта для поиска книг по автору
+ * и поиска, с последующим выводом списка книг
+ * @param {*} conversation Объект для общения с пользователем
+ * @param {*} ctx Контекст общения с ботом
+ */
+async function searchBookByAuthor(conversation, ctx) {
+    await ctx.reply("Напишите, книги какого автора Вы ищете");
+
+    const newCtx = await conversation.wait();
+    await newCtx.reply("Запуск поиска...");
+
+    const authorName = newCtx.message.text;
+    console.log(`Searching "${authorName}"`);
+    const authors = await flibustaApi.getAuthors(authorName);
+
+    // Выдаём ошибку, если нет авторов
+    if (!authors) {
+        await ctx.reply('Авторы не найдены :(');
+        await ctx.conversation.enter("searchBookByAuthor");
+        return;
+    }
+
+    // Берём первого по популярности автора
+    const author = getPopularAuthor(authors);
+    await newCtx.reply(`Скорее всего, вы искали писателя "${author.name}"`);
+
+    let books = await flibustaApi.getBooksByAuthorOpds(author.id);
+
+    newCtx.session.flibustaApi = flibustaApi;
+    newCtx.session.books = books;
+    newCtx.session.page = 0;
+
+    await conversation.external(() => showBookList(newCtx, books));
+}
 
 /**
  * Функция вызова промпта для поиска книги
@@ -93,12 +132,6 @@ async function showBookList(ctx, books, page = 0) {
  * @param {object} book Информация о выбранной книге
  */
 async function suggestBookDownload(ctx, book) {
-    function strip(str){
-        return str
-            .replace(/<br\/>/gm, '\n')
-            .replace(/<[^>]*>?/gm, '');
-    }
-
     const imageUUID = uuid.v4();
     const imagePath = `files/${imageUUID}.${book.cover.split('.').pop()}`;
 
@@ -193,11 +226,11 @@ bot.on("callback_query:data", async (ctx) => {
     switch (callbackType) {
         case 'book':
             const {books} = ctx.session;
-            await suggestBookDownload(ctx, books[id])
+            await suggestBookDownload(ctx, books[id]);
             break;
         case 'download':
             const {book} = ctx.session;
-            await downloadBook(ctx, book, id)
+            await downloadBook(ctx, book, id);
             break;
         default:
             console.log("Unknown button event with payload", ctx.callbackQuery.data);
@@ -208,11 +241,15 @@ bot.on("callback_query:data", async (ctx) => {
 });
 
 bot.command("start", async (ctx) => {
-    ctx.reply("Welcome! Up and running.")
+    ctx.reply("Добро пожаловать! Чтобы начать, выберите пункт в меню.")
 });
 
 bot.command("book", async (ctx) => {
     await ctx.conversation.enter("searchBook");
+});
+
+bot.command("author", async (ctx) => {
+    await ctx.conversation.enter("searchBookByAuthor");
 });
 
 bot.catch(async (err) => {
@@ -224,17 +261,16 @@ bot.catch(async (err) => {
 });
 
 await bot.api.setMyCommands([
-    { command: "book", description: "Скачать книгу" },
+    { command: "book", description: "Найти книгу" },
+    { command: "author", description: "Найти книгу по автору" },
 ]);
 
 // Init bot
-if (!fs.existsSync('./files')){
-    fs.mkdirSync('./files');
-}
+initFilesFolder();
 
-bot.start()
-console.log('Bot is launched')
+bot.start();
+console.log('Bot is launched');
 
 // Enable graceful stop
-process.once('SIGINT', () => bot.stop('SIGINT'))
-process.once('SIGTERM', () => bot.stop('SIGTERM'))
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));

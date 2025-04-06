@@ -10,9 +10,9 @@ To set up this Telegram bot, you need two things:
 ### Gaining access to Flibusta
 If you live in a country where Flibusta is not blocked - ~~fuck you~~ congratulations! You can skip this step altogether.
 If not, then you need to bypass the restrictions. There are 3 ways of doing so:
-1. Use any working VPN
-2. Use GoodbyeDPI (great for users from Russian Federation)
-3. Use Tor Expert Bundle (used in v1.0.0)
+1. Using a working VPN
+2. Using GoodbyeDPI (great for users currently in Russian Federation)
+3. Using Tor Expert Bundle (slow, used in v1.0.0)
 
 ### Setting up GoodbyeDPI
 [GoodbyeDPI](https://github.com/ValdikSS/GoodbyeDPI) is a Deep Packet Inspection circumvention utility. Follow the instructions and Flibusta should be unblocked.
@@ -31,3 +31,5 @@ Create a process.env file in the root folder and add a key named BOT_TOKEN with 
 1. Add English translation
 2. ~~Add book description when selecting~~
 3. ~~Remove Tor dependency (hard to set up in Russia without VPN, maybe using VPN without Tor is better)~~
+4. Break down project into multiple files
+5. Add the ability to change author if bot had chosen the wrong one
